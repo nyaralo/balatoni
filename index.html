@@ -15,15 +15,16 @@
             align-items: center;
         }
         .container {
-            max-width: 800px;
+            max-width: 850px;
             width: 100%;
             background: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             box-sizing: border-box;
+            margin-bottom: 15px;
         }
-        h1, h2 {
+        h1, h2, h3 {
             color: #2c3e50;
             text-align: center;
         }
@@ -76,18 +77,34 @@
         /* Naptár rács stílusok 2027-re */
         .calendar-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 8px;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
             margin-top: 15px;
+        }
+        .weekday-header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            color: #7f8c8d;
+            padding: 5px 0;
         }
         .day-card {
             border: 1px solid #bdc3c7;
             border-radius: 6px;
-            padding: 8px;
+            padding: 6px;
             text-align: center;
             background: #fff;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
+            min-height: 55px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .day-card.empty {
+            background: transparent;
+            border: none;
+            cursor: default;
         }
         .day-card.booked-alone {
             background-color: #fadbd8;
@@ -101,12 +118,12 @@
             background-color: #e8f8f5;
             border-color: #2ecc71;
         }
-        .booking-list {
+        .booking-list, .admin-section {
             margin-top: 20px;
             border-top: 2px solid #eee;
             padding-top: 15px;
         }
-        .booking-item {
+        .booking-item, .user-item {
             background: #f8f9f9;
             padding: 10px;
             border-radius: 5px;
@@ -115,12 +132,6 @@
             justify-content: space-between;
             align-items: center;
             font-size: 13px;
-        }
-        .actions button {
-            width: auto;
-            padding: 5px 10px;
-            margin-left: 5px;
-            font-size: 12px;
         }
     </style>
 </head>
@@ -133,7 +144,7 @@
             <p style="text-align: center; color: #666;">Kérlek, add meg a hozzáférési adataidat!</p>
             <div class="form-group">
                 <label for="username">Felhasználónév:</label>
-                <input type="text" id="username" placeholder="Pl. admin vagy csalad">
+                <input type="text" id="username" placeholder="Pl. admin">
             </div>
             <div class="form-group">
                 <label for="password">Jelszó:</label>
@@ -176,7 +187,39 @@
                 <span style="background: #fcf3cf; padding: 3px 8px; border: 1px solid #f1c40f; border-radius: 4px;">Mások is jöhetnek (Nyitott)</span>
             </div>
 
-            <div id="calendar-container" class="calendar-grid"></div>
+            <!-- Hét napjai fejléc -->
+            <div class="calendar-grid">
+                <div class="weekday-header">Hét</div>
+                <div class="weekday-header">Kedd</div>
+                <div class="weekday-header">Sze</div>
+                <div class="weekday-header">Csü</div>
+                <div class="weekday-header">Pén</div>
+                <div class="weekday-header">Szo</div>
+                <div class="weekday-header">Vas</div>
+            </div>
+            <div id="calendar-container" class="calendar-grid" style="margin-top: 5px;"></div>
+
+            <!-- ADMIN FELÜLET: FELHASZNÁLÓK KEZELÉSE -->
+            <div id="admin-user-section" class="admin-section hidden">
+                <h3>Admin: Felhasználók kezelése</h3>
+                <div class="form-group">
+                    <label for="new-username">Új felhasználónév:</label>
+                    <input type="text" id="new-username" placeholder="Felhasználó neve">
+                </div>
+                <div class="form-group">
+                    <label for="new-password">Jelszó:</label>
+                    <input type="password" id="new-password" placeholder="Jelszó">
+                </div>
+                <div class="form-group">
+                    <label for="new-role">Jogosultság:</label>
+                    <select id="new-role">
+                        <option value="Tag">Tag (Foglalhat)</option>
+                        <option value="Admin">Adminisztrátor</option>
+                    </select>
+                </div>
+                <button onclick="addNewUser()" style="background-color: #27ae60;">Felhasználó létrehozása</button>
+                <div id="user-list-container" style="margin-top: 15px;"></div>
+            </div>
 
             <div class="booking-list">
                 <h3>Aktív foglalásaim / Rendszer foglalásai</h3>
@@ -185,8 +228,8 @@
         </div>
     </div>
 
-    <!-- FOGLALÁSI MODAL / PANEL -->
-    <div id="booking-modal" class="container hidden" style="margin-top: 20px; border: 2px dashed #3498db;">
+    <!-- FOGLALÁSI MODAL -->
+    <div id="booking-modal" class="container hidden" style="border: 2px dashed #3498db;">
         <h3 id="modal-date-title">Dátum foglalása</h3>
         <input type="hidden" id="selected-date-input">
         <div class="form-group">
@@ -203,17 +246,15 @@
     </div>
 
     <script>
-        // Felhasználói adatbázis (később bővíthető vagy köthető JSONBin-hez)
-        const users = {
+        // Felhasználók betöltése localStorage-ból vagy alapértelmezett adatokkal
+        let users = JSON.parse(localStorage.getItem('nyaralo_users_2027')) || {
             "admin": { pass: "admin123", role: "Admin" },
-            "csalad": { pass: "nyaralo2027", role: "Tag" },
-            "baratok": { pass: "barat2027", role: "Tag" }
+            "csalad": { pass: "nyaralo2027", role: "Tag" }
         };
 
         let currentUser = null;
         let currentRole = null;
 
-        // Foglalások tárolása (Kulcs: '2027-MM-DD', Érték: { user, type })
         let bookings = JSON.parse(localStorage.getItem('nyaralo_bookings_2027')) || {};
 
         function handleLogin() {
@@ -228,6 +269,14 @@
                 document.getElementById('app-section').classList.remove('hidden');
                 document.getElementById('current-user-display').innerText = currentUser;
                 document.getElementById('user-role-display').innerText = currentRole;
+                
+                if (currentRole === 'Admin') {
+                    document.getElementById('admin-user-section').classList.remove('hidden');
+                    renderUserList();
+                } else {
+                    document.getElementById('admin-user-section').classList.add('hidden');
+                }
+
                 renderCalendar();
                 renderMyBookings();
             } else {
@@ -246,6 +295,56 @@
             document.getElementById('login-section').classList.remove('hidden');
         }
 
+        function addNewUser() {
+            const u = document.getElementById('new-username').value.trim();
+            const p = document.getElementById('new-password').value;
+            const role = document.getElementById('new-role').value;
+
+            if (!u || !p) {
+                alert('Minden mezőt ki kell tölteni!');
+                return;
+            }
+            if (users[u]) {
+                alert('Ilyen nevű felhasználó már létezik!');
+                return;
+            }
+
+            users[u] = { pass: p, role: role };
+            localStorage.setItem('nyaralo_users_2027', JSON.stringify(users));
+            
+            document.getElementById('new-username').value = '';
+            document.getElementById('new-password').value = '';
+            renderUserList();
+            alert(`Sikeresen létrehozva: ${u}`);
+        }
+
+        function deleteUser(username) {
+            if (username === 'admin') {
+                alert('Az alap admin fiók nem törölhető!');
+                return;
+            }
+            if (confirm(`Biztosan törölni szeretnéd a(z) ${username} felhasználót?`)) {
+                delete users[username];
+                localStorage.setItem('nyaralo_users_2027', JSON.stringify(users));
+                renderUserList();
+            }
+        }
+
+        function renderUserList() {
+            const container = document.getElementById('user-list-container');
+            container.innerHTML = '<strong>Létező felhasználók:</strong>';
+
+            for (const [uname, data] of Object.entries(users)) {
+                const div = document.createElement('div');
+                div.className = 'user-item';
+                div.innerHTML = `
+                    <span>${uname} (${data.role})</span>
+                    ${uname !== 'admin' ? `<button onclick="deleteUser('${uname}')" class="danger-btn" style="padding: 3px 8px; font-size: 11px;">Törlés</button>` : ''}
+                `;
+                container.appendChild(div);
+            }
+        }
+
         function getDaysInMonth(year, month) {
             return new Date(year, month + 1, 0).getDate();
         }
@@ -256,11 +355,28 @@
             container.innerHTML = '';
 
             const daysCount = getDaysInMonth(2027, month);
+            
+            // Hányadik napon kezdődik a hónap (0: Vasárnap, 1: Hétfő, ...)
+            const firstDayIndex = new Date(2027, month, 1).getDay();
+            // Átalakítás, hogy a Hétfő legyen az első (0: Hétfő, ..., 6: Vasárnap)
+            const startingSpace = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
+
+            // Üres cellák a hónap kezdete előtt
+            for (let i = 0; i < startingSpace; i++) {
+                const emptyCard = document.createElement('div');
+                emptyCard.className = 'day-card empty';
+                container.appendChild(emptyCard);
+            }
 
             for (let day = 1; day <= daysCount; day++) {
+                const dayDate = new Date(2027, month, day);
                 const dayStr = String(day).padStart(2, '0');
                 const monthStr = String(month + 1).padStart(2, '0');
                 const dateKey = `2027-${monthStr}-${dayStr}`;
+
+                // Hét napjának rövid neve magyarul
+                const weekdays = ['Vas', 'Hét', 'Ked', 'Sze', 'Csü', 'Pén', 'Szo'];
+                const weekdayName = weekdays[dayDate.getDay()];
 
                 const card = document.createElement('div');
                 card.className = 'day-card';
@@ -269,14 +385,14 @@
                 if (booking) {
                     if (booking.type === 'alone') {
                         card.classList.add('booked-alone');
-                        card.innerHTML = `<strong>${day}.</strong><br><small>🔒 ${booking.user}</small>`;
+                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>🔒 ${booking.user}</small>`;
                     } else {
                         card.classList.add('booked-shared');
-                        card.innerHTML = `<strong>${day}.</strong><br><small>👥 ${booking.user}</small>`;
+                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>👥 ${booking.user}</small>`;
                     }
                 } else {
                     card.classList.add('free');
-                    card.innerHTML = `<strong>${day}.</strong><br><small style="color: green;">Szabad</small>`;
+                    card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small style="color: green;">Szabad</small>`;
                 }
 
                 card.onclick = () => openBookingModal(dateKey);
@@ -298,7 +414,6 @@
             const dateKey = document.getElementById('selected-date-input').value;
             const type = document.getElementById('booking-type').value;
 
-            // Ellenőrzés: ha már foglalt egyedül és nem az enyém vagy nem vagyok admin, ne írhassam felül
             if (bookings[dateKey] && bookings[dateKey].type === 'alone' && bookings[dateKey].user !== currentUser && currentRole !== 'Admin') {
                 alert('Ez a nap már le van zárva egyedüli foglalással!');
                 return;
@@ -313,7 +428,7 @@
         }
 
         function deleteBooking(dateKey) {
-            if (confirm(`Biztosan törölni szeretnéd a(z) ${dateKey} napra szóló foglalásodat?`)) {
+            if (confirm(`Biztosan törölni szeretnéd a(z) ${dateKey} napra szóló foglalást?`)) {
                 delete bookings[dateKey];
                 localStorage.setItem('nyaralo_bookings_2027', JSON.stringify(bookings));
                 renderCalendar();
@@ -337,7 +452,7 @@
                     item.innerHTML = `
                         <span><strong>${dateKey}</strong> - ${data.user} (${typeText})</span>
                         <div class="actions">
-                            <button onclick="deleteBooking('${dateKey}')" class="danger-btn">Törlés</button>
+                            <button onclick="deleteBooking('${dateKey}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px;">Törlés</button>
                         </div>
                     `;
                     container.appendChild(item);
