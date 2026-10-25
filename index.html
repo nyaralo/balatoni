@@ -446,7 +446,7 @@
         }
 
         async function saveBooking() {
-            const dateKey = document.getElementById('selected-date-input').value;
+            const dateKey = document.getElementById('selected-date-input-value') || document.getElementById('selected-date-input').value;
             const type = document.getElementById('booking-type').value;
 
             if (dbData.bookings[dateKey] && dbData.bookings[dateKey].type === 'alone' && dbData.bookings[dateKey].user !== currentUser && currentRole !== 'Admin') {
@@ -454,7 +454,7 @@
                 return;
             }
 
-            dbData.bookings[dateKey] { user: currentUser, type: type };
+            dbData.bookings[dateKey] = { user: currentUser, type: type };
             await saveDataToCloud();
 
             closeModal();
