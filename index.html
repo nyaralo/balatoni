@@ -261,7 +261,7 @@
         let currentUser = null;
         let currentRole = null;
 
-        async function loadDataFromCloud() {
+    async function loadDataFromCloud() {
             try {
                 const res = await fetch(`${API_URL}/latest`, {
                     headers: { 'X-Master-Key': MASTER_KEY }
@@ -269,11 +269,12 @@
                 if (res.ok) {
                     const json = await res.json();
                     if (json.record && json.record.users) {
+                        // Teljes egészében átvesszük a felhő adatbázisát (felhasználók + foglalások)
                         dbData = json.record;
                     }
                 }
             } catch (e) {
-                console.log('Hálózati hiba adatok betöltése közben.');
+                console.log('Hálózati hiba adatok betöltése közben, a helyi adatok maradnak.');
             }
         }
 
