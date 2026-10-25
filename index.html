@@ -277,20 +277,24 @@
             }
         }
 
-        async function saveDataToCloud() {
+  async function saveDataToCloud() {
             try {
                 const res = await fetch(API_URL, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Master-Key': MASTER_KEY
+                        'X-Master-Key': MASTER_KEY,
+                        'X-Bin-Versioning': 'false'
                     },
                     body: JSON.stringify(dbData)
                 });
                 if (!res.ok) {
-                    alert('Hiba a felhőbe történő mentés során!');
+                    const errText = await res.text();
+                    console.error('JSONBin hiba:', errText);
+                    alert('Hiba a felhőbe történő mentés során! Válasz: ' + errText);
                 }
             } catch (e) {
+                console.error('Hálózati hiba:', e);
                 alert('Hálózati hiba mentés közben!');
             }
         }
