@@ -74,7 +74,6 @@
             border-radius: 5px;
             margin-bottom: 20px;
         }
-        /* Naptár rács stílusok 2027-re */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -246,25 +245,64 @@
     </div>
 
     <script>
-        // Felhasználók betöltése localStorage-ból vagy alapértelmezett adatokkal
-        let users = JSON.parse(localStorage.getItem('nyaralo_users_2027')) || {
-            "admin": { pass: "admin123", role: "Admin" },
-            "csalad": { pass: "nyaralo2027", role: "Tag" }
+        const BIN_ID = '6accc711ac6210605a2a612e';
+        const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+
+        let dbData = {
+            users: {
+                "admin": { pass: "admin123", role: "Admin" },
+                "csalad": { pass: "nyaralo2027", role: "Tag" }
+            },
+            bookings: {}
         };
 
         let currentUser = null;
         let currentRole = null;
 
-        let bookings = JSON.parse(localStorage.getItem('nyaralo_bookings_2027')) || {};
+        // Adatok betöltése a JSONBin-ről induláskor
+        async function loadDataFromCloud() {
+            try {
+                const response = await fetch(API_URL, {
+                    headers: { 'X-Access-Master-Key': '$2a$10$...' // Ingyenes nyilvános olvasáshoz/íráshoz a Bin ID is elég lehet, vagy kulcs nélkül is megy GET
+                    }
+                });
+                // Ha a Bin üres vagy védett, próbáljuk simán lekérni
+                const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`);
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.record && json.record.users) {
+                        dbData = json.record;
+                    }
+                }
+            } catch (e) {
+                console.log('Hálózati hiba vagy első indítás, helyi adatok használata.');
+            }
+        }
 
-        function handleLogin() {
+        // Adatok mentése a JSONBin-re
+        async function saveDataToCloud() {
+            try {
+                await fetch(API_URL, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(dbData)
+                });
+            } catch (e) {
+                alert('Hiba történt az adatok mentése közben a felhőbe!');
+            }
+        }
+
+        async function handleLogin() {
+            await loadDataFromCloud(); // Belépés előtt frissítünk a felhőből
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
             const err = document.getElementById('login-error');
 
-            if (users[u] && users[u].pass === p) {
+            if (dbData.users[u] && dbData.users[u].pass === p) {
                 currentUser = u;
-                currentRole = users[u].role;
+                currentRole = dbData.users[u].role;
                 document.getElementById('login-section').classList.add('hidden');
                 document.getElementById('app-section').classList.remove('hidden');
                 document.getElementById('current-user-display').innerText = currentUser;
@@ -295,7 +333,7 @@
             document.getElementById('login-section').classList.remove('hidden');
         }
 
-        function addNewUser() {
+        async function addNewUser() {
             const u = document.getElementById('new-username').value.trim();
             const p = document.getElementById('new-password').value;
             const role = document.getElementById('new-role').value;
@@ -304,37 +342,37 @@
                 alert('Minden mezőt ki kell tölteni!');
                 return;
             }
-            if (users[u]) {
+            if (dbData.users[u]) {
                 alert('Ilyen nevű felhasználó már létezik!');
                 return;
             }
 
-            users[u] = { pass: p, role: role };
-            localStorage.setItem('nyaralo_users_2027', JSON.stringify(users));
+            dbData.users[u] = { pass: p, role: role };
+            await saveDataToCloud();
             
             document.getElementById('new-username').value = '';
             document.getElementById('new-password').value = '';
             renderUserList();
-            alert(`Sikeresen létrehozva: ${u}`);
+            alert(`Sikeresen létrehozva a felhőben: ${u}`);
         }
 
-        function deleteUser(username) {
+        async function deleteUser(username) {
             if (username === 'admin') {
                 alert('Az alap admin fiók nem törölhető!');
                 return;
             }
             if (confirm(`Biztosan törölni szeretnéd a(z) ${username} felhasználót?`)) {
-                delete users[username];
-                localStorage.setItem('nyaralo_users_2027', JSON.stringify(users));
+                delete dbData.users[username];
+                await saveDataToCloud();
                 renderUserList();
             }
         }
 
         function renderUserList() {
             const container = document.getElementById('user-list-container');
-            container.innerHTML = '<strong>Létező felhasználók:</strong>';
+            container.innerHTML = '<strong>Létező felhasználók (Felhő):</strong>';
 
-            for (const [uname, data] of Object.entries(users)) {
+            for (const [uname, data] of Object.entries(dbData.users)) {
                 const div = document.createElement('div');
                 div.className = 'user-item';
                 div.innerHTML = `
@@ -349,19 +387,16 @@
             return new Date(year, month + 1, 0).getDate();
         }
 
-        function renderCalendar() {
+        async function renderCalendar() {
+            await loadDataFromCloud(); // Naptár frissítésekor is lekérjük a legfrissebbet
             const month = parseInt(document.getElementById('month-select').value);
             const container = document.getElementById('calendar-container');
             container.innerHTML = '';
 
             const daysCount = getDaysInMonth(2027, month);
-            
-            // Hányadik napon kezdődik a hónap (0: Vasárnap, 1: Hétfő, ...)
             const firstDayIndex = new Date(2027, month, 1).getDay();
-            // Átalakítás, hogy a Hétfő legyen az első (0: Hétfő, ..., 6: Vasárnap)
             const startingSpace = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
 
-            // Üres cellák a hónap kezdete előtt
             for (let i = 0; i < startingSpace; i++) {
                 const emptyCard = document.createElement('div');
                 emptyCard.className = 'day-card empty';
@@ -374,14 +409,13 @@
                 const monthStr = String(month + 1).padStart(2, '0');
                 const dateKey = `2027-${monthStr}-${dayStr}`;
 
-                // Hét napjának rövid neve magyarul
                 const weekdays = ['Vas', 'Hét', 'Ked', 'Sze', 'Csü', 'Pén', 'Szo'];
                 const weekdayName = weekdays[dayDate.getDay()];
 
                 const card = document.createElement('div');
                 card.className = 'day-card';
 
-                const booking = bookings[dateKey];
+                const booking = dbData.bookings[dateKey];
                 if (booking) {
                     if (booking.type === 'alone') {
                         card.classList.add('booked-alone');
@@ -398,6 +432,7 @@
                 card.onclick = () => openBookingModal(dateKey);
                 container.appendChild(card);
             }
+            renderMyBookings();
         }
 
         function openBookingModal(dateKey) {
@@ -410,29 +445,27 @@
             document.getElementById('booking-modal').classList.add('hidden');
         }
 
-        function saveBooking() {
+        async function saveBooking() {
             const dateKey = document.getElementById('selected-date-input').value;
             const type = document.getElementById('booking-type').value;
 
-            if (bookings[dateKey] && bookings[dateKey].type === 'alone' && bookings[dateKey].user !== currentUser && currentRole !== 'Admin') {
+            if (dbData.bookings[dateKey] && dbData.bookings[dateKey].type === 'alone' && dbData.bookings[dateKey].user !== currentUser && currentRole !== 'Admin') {
                 alert('Ez a nap már le van zárva egyedüli foglalással!');
                 return;
             }
 
-            bookings[dateKey] = { user: currentUser, type: type };
-            localStorage.setItem('nyaralo_bookings_2027', JSON.stringify(bookings));
+            dbData.bookings[dateKey] = { user: currentUser, type: type };
+            await saveDataToCloud();
 
             closeModal();
             renderCalendar();
-            renderMyBookings();
         }
 
-        function deleteBooking(dateKey) {
+        async function deleteBooking(dateKey) {
             if (confirm(`Biztosan törölni szeretnéd a(z) ${dateKey} napra szóló foglalást?`)) {
-                delete bookings[dateKey];
-                localStorage.setItem('nyaralo_bookings_2027', JSON.stringify(bookings));
+                delete dbData.bookings[dateKey];
+                await saveDataToCloud();
                 renderCalendar();
-                renderMyBookings();
             }
         }
 
@@ -442,7 +475,7 @@
 
             let hasBookings = false;
 
-            for (const [dateKey, data] of Object.entries(bookings)) {
+            for (const [dateKey, data] of Object.entries(dbData.bookings)) {
                 if (currentRole === 'Admin' || data.user === currentUser) {
                     hasBookings = true;
                     const item = document.createElement('div');
