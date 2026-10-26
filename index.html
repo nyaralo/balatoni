@@ -240,23 +240,24 @@
                 <button onclick="handleLogout()" style="width: auto; margin: 0; background-color: #7f8c8d;">Kilépés</button>
             </div>
 
-            <h2>2027. Évi Nyaraló Foglalás</h2>
+            <h2>Nyaraló Foglalási Rendszer</h2>
             
             <div class="form-group">
                 <label for="month-select">Hónap kiválasztása:</label>
                 <select id="month-select" onchange="renderCalendar()">
-                    <option value="0">2027. Január</option>
-                    <option value="1">2027. Február</option>
-                    <option value="2">2027. Március</option>
-                    <option value="3">2027. Április</option>
-                    <option value="4">2027. Május</option>
-                    <option value="5">2027. Június</option>
-                    <option value="6">2027. Július</option>
-                    <option value="7">2027. Augusztus</option>
-                    <option value="8">2027. Szeptember</option>
-                    <option value="9">2027. Október</option>
-                    <option value="10">2027. November</option>
-                    <option value="11">2027. December</option>
+                    <option value="2026-12">2026. December (Karácsony / Szilveszter)</option>
+                    <option value="2027-01">2027. Január</option>
+                    <option value="2027-02">2027. Február</option>
+                    <option value="2027-03">2027. Március</option>
+                    <option value="2027-04">2027. Április</option>
+                    <option value="2027-05">2027. Május</option>
+                    <option value="2027-06">2027. Június</option>
+                    <option value="2027-07">2027. Július</option>
+                    <option value="2027-08">2027. Augusztus</option>
+                    <option value="2027-09">2027. Szeptember</option>
+                    <option value="2027-10">2027. Október</option>
+                    <option value="2027-11">2027. November</option>
+                    <option value="2027-12">2027. December</option>
                 </select>
             </div>
 
@@ -325,7 +326,7 @@
 
     <script>
         const BIN_ID = '6ade4cf5ffd5d160538b0b22';
-        const MASTER_KEY = '$2a$10$4IGyhO9KryVZw6kgbdEA1uG602Yi7nB0.kxu2eXGwbnk1ctGxtsAm';
+        const MASTER_KEY = '$2a$10$4IGyhO9KryVZw6kgbdEA1uG602Yi7nB0.kxu2eXGwbnk1ctGxtsAm6ade4cf5ffd5d160538b0b22';
         const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
         let dbData = {
@@ -402,7 +403,6 @@
                 renderCalendar();
                 renderMyBookings();
 
-                // Használati útmutató felugró ablak megjelenítése bejelentkezés után
                 document.getElementById('help-modal').classList.remove('hidden');
             } else {
                 err.innerText = "Hibás felhasználónév vagy jelszó!";
@@ -480,12 +480,16 @@
 
         async function renderCalendar() {
             await loadDataFromCloud();
-            const month = parseInt(document.getElementById('month-select').value);
+            const selectedVal = document.getElementById('month-select').value; // Pl. "2026-12" vagy "2027-05"
+            const [yearStr, monthStr] = selectedVal.split('-');
+            const year = parseInt(yearStr);
+            const month = parseInt(monthStr) - 1; // JavaScript hónapok: 0-11
+
             const container = document.getElementById('calendar-container');
             container.innerHTML = '';
 
-            const daysCount = getDaysInMonth(2027, month);
-            const firstDayIndex = new Date(2027, month, 1).getDay();
+            const daysCount = getDaysInMonth(year, month);
+            const firstDayIndex = new Date(year, month, 1).getDay();
             const startingSpace = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
 
             for (let i = 0; i < startingSpace; i++) {
@@ -495,10 +499,10 @@
             }
 
             for (let day = 1; day <= daysCount; day++) {
-                const dayDate = new Date(2027, month, day);
+                const dayDate = new Date(year, month, day);
                 const dayStr = String(day).padStart(2, '0');
-                const monthStr = String(month + 1).padStart(2, '0');
-                const dateKey = `2027-${monthStr}-${dayStr}`;
+                const mStr = String(month + 1).padStart(2, '0');
+                const dateKey = `${year}-${mStr}-${dayStr}`;
 
                 const weekdays = ['Vas', 'Hét', 'Ked', 'Sze', 'Csü', 'Pén', 'Szo'];
                 const weekdayName = weekdays[dayDate.getDay()];
