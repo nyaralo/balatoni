@@ -120,6 +120,7 @@
             flex-direction: column;
             justify-content: space-between;
             user-select: none;
+            position: relative;
         }
         .day-card.empty {
             background: transparent;
@@ -146,6 +147,31 @@
         .day-card.selected small {
             color: white !important;
         }
+        
+        /* TOOLTIP / EGÉRMUTATÓ RÁVITELÉRE MEGJELENŐ DOBOZ */
+        .day-card .tooltip-text {
+            visibility: hidden;
+            width: 140px;
+            background-color: #2c3e50;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 10;
+            bottom: 105%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 10px;
+            pointer-events: none;
+        }
+        .day-card:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .booking-list, .admin-section {
             margin-top: 20px;
             border-top: 2px solid #eee;
@@ -162,6 +188,15 @@
             font-size: 13px;
             flex-wrap: wrap;
             gap: 5px;
+        }
+        .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            object-fit: cover;
+            vertical-align: middle;
+            margin-right: 5px;
+            border: 1px solid #ccc;
         }
 
         /* MODAL / FELUGRÓ ABLAK STÍLUS */
@@ -210,7 +245,7 @@
                 <li><strong>1. Napok kijelölése:</strong> Kattints rá egy vagy több szabad napra (akár több hónapon át is), amelyek ekkor kék színűre váltanak.</li>
                 <li><strong>2. Művelet kiválasztása:</strong> Alul válaszd ki a legördülőből, hogy mit szeretnél (Zárt foglalás csak neked, Nyitott foglalás, ahová más is jöhet, vagy a kijelöltek törlése).</li>
                 <li><strong>3. Mentés:</strong> Kattints a zöld gombra, mire a foglalás aktiválódik a naptárban!</li>
-                <li><strong>4. Google Naptár:</strong> A listában található gombbal egy kattintással átviheted a napokat a saját Google Naptáradba.</li>
+                <li><strong>4. Részletek & Tooltip:</strong> Ha az egeret ráviszed egy napra, azonnal látod, ki foglalta le. Az alsó listában pedig az avatarok is megjelennek!</li>
             </ul>
             <button onclick="closeHelpModal()" class="success-btn" style="margin-top: 15px;">Megértettem, tovább a naptárhoz</button>
         </div>
@@ -326,7 +361,7 @@
 
     <script>
         const BIN_ID = '6ade4cf5ffd5d160538b0b22';
-        const MASTER_KEY = '$2a$10$4IGyhO9KryVZw6kgbdEA1uG602Yi7nB0.kxu2eXGwbnk1ctGxtsAm';
+        const MASTER_KEY = '$2a$10$4IGyh09KryVZw6kgbdEA1uG602Yi7nB0.kxu2eXGwbnk1ctGxtsAm';
         const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
         let dbData = {
@@ -483,6 +518,11 @@
             return new Date(year, month + 1, 0).getDate();
         }
 
+        // Segédfüggvény avatar HTML generálásához (ha van kép, betölti, ha nincs, elhagyja)
+        function getAvatarHtml(username) {
+            return `<img src="avatarok/${username}.jpg" class="avatar" onerror="this.style.display='none'">`;
+        }
+
         async function renderCalendar() {
             await loadDataFromCloud();
             const selectedVal = document.getElementById('month-select').value;
@@ -523,13 +563,16 @@
                 } else if (bookingsList && bookingsList.length > 0) {
                     const hasAlone = bookingsList.some(b => b.type === 'alone');
                     
+                    // Tooltip összeállítása a nevekkel és típusokkal
+                    const tooltipDetails = bookingsList.map(b => `${b.user} (${b.type === 'alone' ? 'Zárt' : 'Nyitott'})`).join(', ');
+
                     if (hasAlone) {
                         card.classList.add('booked-alone');
                         const usersStr = bookingsList.map(b => b.user).join(', ');
-                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>🔒 ${usersStr}</small>`;
+                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>🔒 ${usersStr}</small><span class="tooltip-text">${tooltipDetails}</span>`;
                     } else {
                         card.classList.add('booked-shared');
-                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>👥 Nyitott (${bookingsList.length} fő)</small>`;
+                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>👥 Nyitott (${bookingsList.length} fő)</small><span class="tooltip-text">${tooltipDetails}</span>`;
                     }
                 } else {
                     card.classList.add('free');
@@ -641,8 +684,6 @@
             container.innerHTML = '';
 
             let hasBookings = false;
-
-            // Dátum szerint sorba rendezzük a megjelenítést, hogy szép áttekinthető legyen
             const sortedDates = Object.keys(dbData.bookings).sort();
 
             for (const dateKey of sortedDates) {
@@ -655,6 +696,7 @@
                     item.className = 'booking-item';
                     
                     const typeText = booking.type === 'alone' ? '🔒 Csak én / Egyedül' : '👥 Mások is jöhetnek (Nyitott)';
+                    const avatarHtml = getAvatarHtml(booking.user);
                     
                     const startDate = dateKey.replace(/-/g, '');
                     let nextDay = new Date(dateKey);
@@ -666,11 +708,10 @@
                     const eventLocation = encodeURIComponent('Balatoni Nyaraló');
                     const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDate}/${endDate}&details=${eventDetails}&location=${eventLocation}`;
 
-                    // Csak akkor engedjük a törlés gombot, ha a miénk vagy adminok vagyunk
                     const canDelete = (booking.user === currentUser || currentRole === 'Admin');
 
                     item.innerHTML = `
-                        <span><strong>${dateKey}</strong> - <strong>${booking.user}</strong> (${typeText})</span>
+                        <span><strong>${dateKey}</strong> - ${avatarHtml}<strong>${booking.user}</strong> (${typeText})</span>
                         <div style="display: flex; gap: 5px; align-items: center;">
                             <a href="${gCalUrl}" target="_blank" class="gcal-btn">📅 Google Naptár</a>
                             ${canDelete ? `<button onclick="deleteSpecificBooking('${dateKey}', '${booking.user}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px; margin: 0;">Törlés</button>` : ''}
