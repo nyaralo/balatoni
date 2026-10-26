@@ -68,6 +68,20 @@
         .success-btn:hover {
             background-color: #219653;
         }
+        .gcal-btn {
+            background-color: #f39c12;
+            color: white;
+            padding: 5px 10px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .gcal-btn:hover {
+            background-color: #d68910;
+        }
         .hidden {
             display: none !important;
         }
@@ -146,6 +160,8 @@
             justify-content: space-between;
             align-items: center;
             font-size: 13px;
+            flex-wrap: wrap;
+            gap: 5px;
         }
     </style>
 </head>
@@ -461,7 +477,6 @@
 
         function toggleDateSelection(dateKey) {
             const booking = dbData.bookings[dateKey];
-            // Ha zárt foglalás, azt csak a sajátja vagy admin tudja kijelölni törlésre / módosításra
             if (booking && booking.type === 'alone' && booking.user !== currentUser && currentRole !== 'Admin') {
                 alert('Ez a nap más által lezárt egyedüli foglalás!');
                 return;
@@ -498,7 +513,6 @@
                 if (confirm(`Biztosan törölni szeretnéd a kijelölt ${selectedDates.length} db nap foglalását?`)) {
                     for (const dateKey of selectedDates) {
                         const booking = dbData.bookings[dateKey];
-                        // Csak a sajátját vagy admin törölheti
                         if (currentRole === 'Admin' || (booking && booking.user === currentUser)) {
                             delete dbData.bookings[dateKey];
                         }
@@ -535,16 +549,28 @@
 
             for (const [dateKey, data] of Object.entries(dbData.bookings)) {
                 if (currentRole === 'Admin' || data.user === currentUser) {
-                    hasBookings.type = true;
                     hasBookings = true;
                     const item = document.createElement('div');
                     item.className = 'booking-item';
                     
                     const typeText = data.type === 'alone' ? '🔒 Csak én / Egyedül' : '👥 Mások is jöhetnek';
+                    
+                    // Google Naptár link generálás
+                    const startDate = dateKey.replace(/-/g, '');
+                    let nextDay = new Date(dateKey);
+                    nextDay.setDate(nextDay.getDate() + 1);
+                    const endDate = nextDay.toISOString().slice(0, 10).replace(/-/g, '');
+                    
+                    const eventTitle = encodeURIComponent(`Nyaraló foglalás - ${data.user} (${data.type === 'alone' ? 'Zárt' : 'Nyitott'})`);
+                    const eventDetails = encodeURIComponent(`Foglalás típusa: ${typeText}\nFoglalta: ${data.user}`);
+                    const eventLocation = encodeURIComponent('Balatoni Nyaraló');
+                    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDate}/${endDate}&details=${eventDetails}&location=${eventLocation}`;
+
                     item.innerHTML = `
                         <span><strong>${dateKey}</strong> - ${data.user} (${typeText})</span>
-                        <div class="actions">
-                            <button onclick="deleteBooking('${dateKey}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px;">Törlés</button>
+                        <div style="display: flex; gap: 5px; align-items: center;">
+                            <a href="${gCalUrl}" target="_blank" class="gcal-btn">📅 Google Naptár</a>
+                            <button onclick="deleteBooking('${dateKey}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px; margin: 0;">Törlés</button>
                         </div>
                     `;
                     container.appendChild(item);
