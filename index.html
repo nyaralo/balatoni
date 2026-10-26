@@ -216,15 +216,16 @@
 
             <!-- Kijelölést kezelő sáv -->
             <div id="booking-action-panel" style="margin-top: 20px; background: #f8f9f9; padding: 15px; border-radius: 5px; border: 1px dashed #3498db;" class="hidden">
-                <h3 style="margin-top: 0; font-size: 15px;">Kijelölt napok mentése</h3>
+                <h3 style="margin-top: 0; font-size: 15px;">Kijelölt napok műveletei</h3>
                 <div class="form-group">
-                    <label for="booking-type">Foglalás típusa a kijelölt napokra:</label>
+                    <label for="booking-type">Művelet típusa:</label>
                     <select id="booking-type">
-                        <option value="alone">Csak én / Egyedül (Zárt idősáv)</option>
-                        <option value="shared">Mások is jöhetnek (Nyitott idősáv)</option>
+                        <option value="alone">Foglalás: Csak én / Egyedül (Zárt)</option>
+                        <option value="shared">Foglalás: Mások is jöhetnek (Nyitott)</option>
+                        <option value="delete">Kijelölt foglalások törlése</option>
                     </select>
                 </div>
-                <button onclick="saveSelectedBookings()" class="success-btn">Kijelölt napok mentése a felhőbe</button>
+                <button onclick="executeSelectedAction()" class="success-btn">Végrehajtás és mentés a felhőbe</button>
                 <button onclick="clearSelection()" style="background-color: #7f8c8d;">Kijelölés törlése</button>
             </div>
 
@@ -259,7 +260,7 @@
 
     <script>
         const BIN_ID = '6ade4cf5ffd5d160538b0b22';
-        const MASTER_KEY = '$2a$10$4IGyhO9KryVZw6kgbdEA1uG602Yi7nB0.kxu2eXGwbnk1ctGxtsAm';
+        const MASTER_KEY = '$2a$10$4IGyh09KryVZw6kgbdEA1uG602Yi7nB0.kxu2eXGwbnk1ctGxtsAm';
         const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
         let dbData = {
@@ -273,7 +274,7 @@
 
         let currentUser = null;
         let currentRole = null;
-        let selectedDates = []; // Kijelölt napok tömbje
+        let selectedDates = [];
 
         async function loadDataFromCloud() {
             try {
@@ -435,7 +436,6 @@
 
                 const booking = dbData.bookings[dateKey];
                 
-                // Ha már ki van jelölve ebben a munkamenetben
                 if (selectedDates.includes(dateKey)) {
                     card.classList.add('selected');
                     card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>✓ Kijelölve</small>`;
@@ -452,7 +452,6 @@
                     card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small style="color: green;">Szabad</small>`;
                 }
 
-                // Kattintásra kijelöljük / visszavonjuk a napot
                 card.onclick = () => toggleDateSelection(dateKey);
                 container.appendChild(card);
             }
@@ -462,16 +461,17 @@
 
         function toggleDateSelection(dateKey) {
             const booking = dbData.bookings[dateKey];
+            // Ha zárt foglalás, azt csak a sajátja vagy admin tudja kijelölni törlésre / módosításra
             if (booking && booking.type === 'alone' && booking.user !== currentUser && currentRole !== 'Admin') {
-                alert('Ez a nap már le van zárva egyedüli foglalással!');
+                alert('Ez a nap más által lezárt egyedüli foglalás!');
                 return;
             }
 
             const index = selectedDates.indexOf(dateKey);
             if (index > -1) {
-                selectedDates.splice(index, 1); // Ha már benne volt, kivesszük
+                selectedDates.splice(index, 1);
             } else {
-                selectedDates.push(dateKey); // Ha nem volt benne, beletesszük
+                selectedDates.push(dateKey);
             }
             renderCalendar();
         }
@@ -490,18 +490,33 @@
             }
         }
 
-        async function saveSelectedBookings() {
+        async function executeSelectedAction() {
             if (selectedDates.length === 0) return;
-            const type = document.getElementById('booking-type').value;
+            const actionType = document.getElementById('booking-type').value;
 
-            for (const dateKey of selectedDates) {
-                dbData.bookings[dateKey] = { user: currentUser, type: type };
+            if (actionType === 'delete') {
+                if (confirm(`Biztosan törölni szeretnéd a kijelölt ${selectedDates.length} db nap foglalását?`)) {
+                    for (const dateKey of selectedDates) {
+                        const booking = dbData.bookings[dateKey];
+                        // Csak a sajátját vagy admin törölheti
+                        if (currentRole === 'Admin' || (booking && booking.user === currentUser)) {
+                            delete dbData.bookings[dateKey];
+                        }
+                    }
+                    await saveDataToCloud();
+                    selectedDates = [];
+                    renderCalendar();
+                    alert('A kijelölt foglalások sikeresen törölve lettek!');
+                }
+            } else {
+                for (const dateKey of selectedDates) {
+                    dbData.bookings[dateKey] = { user: currentUser, type: actionType };
+                }
+                await saveDataToCloud();
+                selectedDates = [];
+                renderCalendar();
+                alert('A kijelölt napok foglalása sikeresen elmentve!');
             }
-
-            await saveDataToCloud();
-            selectedDates = [];
-            renderCalendar();
-            alert('A kijelölt napok foglalása sikeresen elmentve!');
         }
 
         async function deleteBooking(dateKey) {
@@ -520,6 +535,7 @@
 
             for (const [dateKey, data] of Object.entries(dbData.bookings)) {
                 if (currentRole === 'Admin' || data.user === currentUser) {
+                    hasBookings.type = true;
                     hasBookings = true;
                     const item = document.createElement('div');
                     item.className = 'booking-item';
