@@ -265,7 +265,7 @@
                 <span style="background: #e8f8f5; padding: 3px 8px; border: 1px solid #2ecc71; border-radius: 4px;">Szabad</span>
                 <span style="background: #3498db; color: white; padding: 3px 8px; border: 1px solid #2980b9; border-radius: 4px;">Kijelölt</span>
                 <span style="background: #fadbd8; padding: 3px 8px; border: 1px solid #e74c3c; border-radius: 4px;">Egyedül (Zárt)</span>
-                <span style="background: #fcf3cf; padding: 3px 8px; border: 1px solid #f1c40f; border-radius: 4px;">Nyitott</span>
+                <span style="background: #fcf3cf; padding: 3px 8px; border: 1px solid #f1c40f; border-radius: 4px;">Nyitott (Megosztott)</span>
             </div>
 
             <!-- Hét napjai fejléc -->
@@ -288,7 +288,7 @@
                     <select id="booking-type">
                         <option value="alone">Foglalás: Csak én / Egyedül (Zárt)</option>
                         <option value="shared">Foglalás: Mások is jöhetnek (Nyitott)</option>
-                        <option value="delete">Kijelölt foglalások törlése</option>
+                        <option value="delete">Kijelölt foglalásaim törlése</option>
                     </select>
                 </div>
                 <button onclick="executeSelectedAction()" class="success-btn">Végrehajtás és mentés a felhőbe</button>
@@ -351,6 +351,11 @@
                     const json = await res.json();
                     if (json.record && json.record.users) {
                         dbData = json.record;
+                        for (let k in dbData.bookings) {
+                            if (!Array.isArray(dbData.bookings[k])) {
+                                dbData.bookings[k] = [dbData.bookings[k]];
+                            }
+                        }
                     }
                 }
             } catch (e) {
@@ -480,10 +485,10 @@
 
         async function renderCalendar() {
             await loadDataFromCloud();
-            const selectedVal = document.getElementById('month-select').value; // Pl. "2026-12" vagy "2027-05"
+            const selectedVal = document.getElementById('month-select').value;
             const [yearStr, monthStr] = selectedVal.split('-');
             const year = parseInt(yearStr);
-            const month = parseInt(monthStr) - 1; // JavaScript hónapok: 0-11
+            const month = parseInt(monthStr) - 1;
 
             const container = document.getElementById('calendar-container');
             container.innerHTML = '';
@@ -510,18 +515,22 @@
                 const card = document.createElement('div');
                 card.className = 'day-card';
 
-                const booking = dbData.bookings[dateKey];
+                const bookingsList = dbData.bookings[dateKey];
                 
                 if (selectedDates.includes(dateKey)) {
                     card.classList.add('selected');
                     card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>✓ Kijelölve</small>`;
-                } else if (booking) {
-                    if (booking.type === 'alone') {
+                } else if (bookingsList && bookingsList.length > 0) {
+                    const hasAlone = bookingsList.some(b => b.type === 'alone');
+                    
+                    if (hasAlone) {
                         card.classList.add('booked-alone');
-                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>🔒 ${booking.user}</small>`;
+                        const usersStr = bookingsList.map(b => b.user).join(', ');
+                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>🔒 ${usersStr}</small>`;
                     } else {
                         card.classList.add('booked-shared');
-                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>👥 ${booking.user}</small>`;
+                        // Itt már nem zsúfoljuk be az összes nevet, hanem darabszámot írunk ki
+                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>👥 Nyitott (${bookingsList.length} fő)</small>`;
                     }
                 } else {
                     card.classList.add('free');
@@ -536,10 +545,14 @@
         }
 
         function toggleDateSelection(dateKey) {
-            const booking = dbData.bookings[dateKey];
-            if (booking && booking.type === 'alone' && booking.user !== currentUser && currentRole !== 'Admin') {
-                alert('Ez a nap más által lezárt egyedüli foglalás!');
-                return;
+            const bookingsList = dbData.bookings[dateKey];
+            if (bookingsList && bookingsList.length > 0) {
+                const hasAlone = bookingsList.some(b => b.type === 'alone');
+                const isMyBooking = bookingsList.some(b => b.user === currentUser);
+                if (hasAlone && !isMyBooking && currentRole !== 'Admin') {
+                    alert('Ez a nap más által lezárt egyedüli foglalás!');
+                    return;
+                }
             }
 
             const index = selectedDates.indexOf(dateKey);
@@ -570,21 +583,39 @@
             const actionType = document.getElementById('booking-type').value;
 
             if (actionType === 'delete') {
-                if (confirm(`Biztosan törölni szeretnéd a kijelölt ${selectedDates.length} db nap foglalását?`)) {
+                if (confirm(`Biztosan törölni szeretnéd a saját foglalásaidat a kijelölt ${selectedDates.length} db napról?`)) {
                     for (const dateKey of selectedDates) {
-                        const booking = dbData.bookings[dateKey];
-                        if (currentRole === 'Admin' || (booking && booking.user === currentUser)) {
-                            delete dbData.bookings[dateKey];
+                        if (dbData.bookings[dateKey]) {
+                            dbData.bookings[dateKey] = dbData.bookings[dateKey].filter(b => b.user !== currentUser);
+                            if (dbData.bookings[dateKey].length === 0) {
+                                delete dbData.bookings[dateKey];
+                            }
                         }
                     }
                     await saveDataToCloud();
                     selectedDates = [];
                     renderCalendar();
-                    alert('A kijelölt foglalások sikeresen törölve lettek!');
+                    alert('A kijelölt foglalásaid törölve lettek!');
                 }
             } else {
                 for (const dateKey of selectedDates) {
-                    dbData.bookings[dateKey] = { user: currentUser, type: actionType };
+                    if (!dbData.bookings[dateKey]) {
+                        dbData.bookings[dateKey] = [];
+                    }
+
+                    const existingIndex = dbData.bookings[dateKey].findIndex(b => b.user === currentUser);
+                    const hasOther = dbData.bookings[dateKey].some(b => b.user !== currentUser);
+                    
+                    if (actionType === 'alone' && hasOther) {
+                        alert(`A(z) ${dateKey} napra már más is jelentkezett, így azt nem tudod egyedüli (zárt) foglalássá tenni!`);
+                        continue;
+                    }
+
+                    if (existingIndex > -1) {
+                        dbData.bookings[dateKey][existingIndex].type = actionType;
+                    } else {
+                        dbData.bookings[dateKey].push({ user: currentUser, type: actionType });
+                    }
                 }
                 await saveDataToCloud();
                 selectedDates = [];
@@ -593,11 +624,16 @@
             }
         }
 
-        async function deleteBooking(dateKey) {
-            if (confirm(`Biztosan törölni szeretnéd a(z) ${dateKey} napra szóló foglalást?`)) {
-                delete dbData.bookings[dateKey];
-                await saveDataToCloud();
-                renderCalendar();
+        async function deleteSpecificBooking(dateKey, targetUser) {
+            if (confirm(`Biztosan törölni szeretnéd ${targetUser} foglalását erről a napról (${dateKey})?`)) {
+                if (dbData.bookings[dateKey]) {
+                    dbData.bookings[dateKey] = dbData.bookings[dateKey].filter(b => b.user !== targetUser);
+                    if (dbData.bookings[dateKey].length === 0) {
+                        delete dbData.bookings[dateKey];
+                    }
+                    await saveDataToCloud();
+                    renderCalendar();
+                }
             }
         }
 
@@ -607,32 +643,36 @@
 
             let hasBookings = false;
 
-            for (const [dateKey, data] of Object.entries(dbData.bookings)) {
-                if (currentRole === 'Admin' || data.user === currentUser) {
-                    hasBookings = true;
-                    const item = document.createElement('div');
-                    item.className = 'booking-item';
-                    
-                    const typeText = data.type === 'alone' ? '🔒 Csak én / Egyedül' : '👥 Mások is jöhetnek';
-                    
-                    const startDate = dateKey.replace(/-/g, '');
-                    let nextDay = new Date(dateKey);
-                    nextDay.setDate(nextDay.getDate() + 1);
-                    const endDate = nextDay.toISOString().slice(0, 10).replace(/-/g, '');
-                    
-                    const eventTitle = encodeURIComponent(`Nyaraló foglalás - ${data.user} (${data.type === 'alone' ? 'Zárt' : 'Nyitott'})`);
-                    const eventDetails = encodeURIComponent(`Foglalás típusa: ${typeText}\nFoglalta: ${data.user}`);
-                    const eventLocation = encodeURIComponent('Balatoni Nyaraló');
-                    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDate}/${endDate}&details=${eventDetails}&location=${eventLocation}`;
+            for (const [dateKey, bookingsList] of Object.entries(dbData.bookings)) {
+                if (!Array.isArray(bookingsList)) continue;
 
-                    item.innerHTML = `
-                        <span><strong>${dateKey}</strong> - ${data.user} (${typeText})</span>
-                        <div style="display: flex; gap: 5px; align-items: center;">
-                            <a href="${gCalUrl}" target="_blank" class="gcal-btn">📅 Google Naptár</a>
-                            <button onclick="deleteBooking('${dateKey}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px; margin: 0;">Törlés</button>
-                        </div>
-                    `;
-                    container.appendChild(item);
+                for (const booking of bookingsList) {
+                    if (currentRole === 'Admin' || booking.user === currentUser) {
+                        hasBookings = true;
+                        const item = document.createElement('div');
+                        item.className = 'booking-item';
+                        
+                        const typeText = booking.type === 'alone' ? '🔒 Csak én / Egyedül' : '👥 Mások is jöhetnek (Nyitott)';
+                        
+                        const startDate = dateKey.replace(/-/g, '');
+                        let nextDay = new Date(dateKey);
+                        nextDay.setDate(nextDay.getDate() + 1);
+                        const endDate = nextDay.toISOString().slice(0, 10).replace(/-/g, '');
+                        
+                        const eventTitle = encodeURIComponent(`Nyaraló foglalás - ${booking.user} (${booking.type === 'alone' ? 'Zárt' : 'Nyitott'})`);
+                        const eventDetails = encodeURIComponent(`Foglalás típusa: ${typeText}\nFoglalta: ${booking.user}`);
+                        const eventLocation = encodeURIComponent('Balatoni Nyaraló');
+                        const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDate}/${endDate}&details=${eventDetails}&location=${eventLocation}`;
+
+                        item.innerHTML = `
+                            <span><strong>${dateKey}</strong> - ${booking.user} (${typeText})</span>
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <a href="${gCalUrl}" target="_blank" class="gcal-btn">📅 Google Naptár</a>
+                                <button onclick="deleteSpecificBooking('${dateKey}', '${booking.user}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px; margin: 0;">Törlés</button>
+                            </div>
+                        `;
+                        container.appendChild(item);
+                    }
                 }
             }
 
