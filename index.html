@@ -214,6 +214,20 @@
             border: 1px solid #ccc;
         }
 
+        /* NYARALÓ KIS KÉP STÍLUS */
+        .house-img-container {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .house-thumb {
+            width: 100%;
+            max-height: 180px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #bdc3c7;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -274,7 +288,11 @@
     </div>
 
     <div class="container">
+        <!-- BEJELENTKEZÉSI NÉZET -->
         <div id="login-section">
+            <div class="house-img-container">
+                <img src="haz-elol.jpg" alt="A nyaraló" class="house-thumb" onerror="this.style.display='none'">
+            </div>
             <h1>Nyaraló Bejelentkezés (2027)</h1>
             <p style="text-align: center; color: #666;">Kérlek, add meg a hozzáférési adataidat!</p>
             <div class="form-group">
@@ -289,7 +307,12 @@
             <p id="login-error" style="color: red; text-align: center; margin-top: 10px;"></p>
         </div>
 
+        <!-- FŐ ALKALMAZÁS NÉZET -->
         <div id="app-section" class="hidden">
+            <div class="house-img-container">
+                <img src="haz-elol.jpg" alt="A nyaraló" class="house-thumb" onerror="this.style.display='none'">
+            </div>
+
             <div class="user-info">
                 <div>Bejelentkezve mint: <strong id="current-user-display"></strong> (<span id="user-role-display"></span>)</div>
                 <div style="display: flex; gap: 8px; align-items: center;">
