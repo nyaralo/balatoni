@@ -166,7 +166,7 @@
         
         .day-card .tooltip-text {
             visibility: hidden;
-            width: 150px;
+            width: 160px;
             background-color: #2c3e50;
             color: #fff;
             text-align: center;
@@ -258,10 +258,10 @@
             <h3>Üdvözlünk a Nyaraló Foglalási Rendszerben! 🏡</h3>
             <ul>
                 <li><strong>1. Napok kijelölése:</strong> Kattints rá egy vagy több szabad napra (akár több hónapon át is), amelyek ekkor kék színűre váltanak.</li>
-                <li><strong>2. Művelet kiválasztása:</strong> Alul válaszd ki a legördülőből, hogy mit szeretnél (Zárt foglalás csak neked, Nyitott foglalás, ahová más is jöhet, vagy a kijelöltek törlése).</li>
+                <li><strong>2. Művelet kiválasztása:</strong> Alul válaszd ki a legördülőből, hogy mit szeretnél, és írhatsz hozzá megjegyzést is (pl. csapat neve, létszám).</li>
                 <li><strong>3. Mentés:</strong> Kattints a zöld gombra, mire a foglalás aktiválódik a naptárban!</li>
-                <li><strong>4. Nagyobb csapatok, barátok:</strong> Ha 5–10 fős csapattal, osztálytársakkal érkeztek, a csapatvezető foglalja le a napokat <em>„Nyitott (Mások is jöhetnek)”</em> opcióval, így mindenki látni fogja.</li>
-                <li><strong>5. Új felhasználók:</strong> Az adminisztrátorok (**Liviusz, Timi**) a felületen keresztül bármikor felvehetnek új családtagokat vagy tagokat.</li>
+                <li><strong>4. Nagyobb csapatok, barátok:</strong> Ha csapattal, osztálytársakkal érkeztek, a foglaláskor a megjegyzés mezőbe beírhatjátok a csoport nevét.</li>
+                <li><strong>5. Új felhasználók:</strong> Az adminisztrátorok (**Liviusz, Timi**) a felületen keresztül bármikor felvehetnek új tagokat.</li>
             </ul>
             
             <div style="margin-top: 15px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555;">
@@ -337,6 +337,7 @@
             </div>
             <div id="calendar-container" class="calendar-grid" style="margin-top: 5px;"></div>
 
+            <!-- Kijelölést kezelő sáv -->
             <div id="booking-action-panel" style="margin-top: 20px; background: #f8f9f9; padding: 15px; border-radius: 5px; border: 1px dashed #3498db;" class="hidden">
                 <h3 style="margin-top: 0; font-size: 15px;">Kijelölt napok műveletei</h3>
                 <div class="form-group">
@@ -346,6 +347,10 @@
                         <option value="shared">Foglalás: Mások is jöhetnek (Nyitott)</option>
                         <option value="delete">Kijelölt foglalásaim törlése</option>
                     </select>
+                </div>
+                <div class="form-group">
+                    <label for="booking-comment">Megjegyzés (pl. Csapat neve, létszám):</label>
+                    <input type="text" id="booking-comment" placeholder="Pl. Osztálytársak (8 fő)">
                 </div>
                 <button onclick="executeSelectedAction()" class="success-btn">Végrehajtás és mentés a felhőbe</button>
                 <button onclick="clearSelection()" style="background-color: #7f8c8d;">Kijelölés törlése</button>
@@ -442,7 +447,6 @@
             const err = document.getElementById('login-error');
             err.innerText = "Bejelentkezés folyamatban...";
             
-            // Megpróbáljuk betölteni a legfrissebb adatokat a felhőből, de ha hiba van, akkor sem fagyunk le
             await loadDataFromCloud();
 
             const u = document.getElementById('username').value.trim();
@@ -596,7 +600,11 @@
                     card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>✓ Kijelölve</small>`;
                 } else if (bookingsList && bookingsList.length > 0) {
                     const hasAlone = bookingsList.some(b => b.type === 'alone');
-                    const tooltipDetails = bookingsList.map(b => `${b.user} (${b.type === 'alone' ? 'Zárt' : 'Nyitott'})`).join(', ');
+                    const tooltipDetails = bookingsList.map(b => {
+                        let txt = `${b.user} (${b.type === 'alone' ? 'Zárt' : 'Nyitott'})`;
+                        if (b.comment) txt += ` - ${b.comment}`;
+                        return txt;
+                    }).join(', ');
 
                     if (hasAlone) {
                         card.classList.add('booked-alone');
@@ -655,6 +663,7 @@
         async function executeSelectedAction() {
             if (selectedDates.length === 0) return;
             const actionType = document.getElementById('booking-type').value;
+            const commentText = document.getElementById('booking-comment').value.trim();
 
             if (actionType === 'delete') {
                 if (confirm(`Biztosan törölni szeretnéd a saját foglalásaidat a kijelölt ${selectedDates.length} db napról?`)) {
@@ -668,6 +677,7 @@
                     }
                     await saveDataToCloud();
                     selectedDates = [];
+                    document.getElementById('booking-comment').value = '';
                     renderCalendar();
                     alert('A kijelölt foglalásaid törölve lettek!');
                 }
@@ -687,12 +697,14 @@
 
                     if (existingIndex > -1) {
                         dbData.bookings[dateKey][existingIndex].type = actionType;
+                        if (commentText) dbData.bookings[dateKey][existingIndex].comment = commentText;
                     } else {
-                        dbData.bookings[dateKey].push({ user: currentUser, type: actionType });
+                        dbData.bookings[dateKey].push({ user: currentUser, type: actionType, comment: commentText });
                     }
                 }
                 await saveDataToCloud();
                 selectedDates = [];
+                document.getElementById('booking-comment').value = '';
                 renderCalendar();
                 alert('A kijelölt napok foglalása sikeresen elmentve!');
             }
@@ -728,6 +740,7 @@
                     item.className = 'booking-item';
                     
                     const typeText = booking.type === 'alone' ? '🔒 Csak én / Egyedül' : '👥 Mások is jöhetnek (Nyitott)';
+                    const commentDisplay = booking.comment ? ` [Megjegyzés: ${booking.comment}]` : '';
                     const avatarHtml = getAvatarHtml(booking.user);
                     
                     const startDate = dateKey.replace(/-/g, '');
@@ -736,14 +749,14 @@
                     const endDate = nextDay.toISOString().slice(0, 10).replace(/-/g, '');
                     
                     const eventTitle = encodeURIComponent(`Nyaraló foglalás - ${booking.user} (${booking.type === 'alone' ? 'Zárt' : 'Nyitott'})`);
-                    const eventDetails = encodeURIComponent(`Foglalás típusa: ${typeText}\nFoglalta: ${booking.user}`);
+                    const eventDetails = encodeURIComponent(`Foglalás típusa: ${typeText}${commentDisplay}\nFoglalta: ${booking.user}`);
                     const eventLocation = encodeURIComponent('Balatoni Nyaraló');
                     const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDate}/${endDate}&details=${eventDetails}&location=${eventLocation}`;
 
                     const canDelete = (booking.user === currentUser || currentRole === 'Admin');
 
                     item.innerHTML = `
-                        <span><strong>${dateKey}</strong> - ${avatarHtml}<strong>${booking.user}</strong> (${typeText})</span>
+                        <span><strong>${dateKey}</strong> - ${avatarHtml}<strong>${booking.user}</strong> (${typeText})${commentDisplay ? `<span style="color: #e67e22; font-weight: bold;">${commentDisplay}</span>` : ''}</span>
                         <div style="display: flex; gap: 5px; align-items: center;">
                             <a href="${gCalUrl}" target="_blank" class="gcal-btn">📅 Google Naptár</a>
                             ${canDelete ? `<button onclick="deleteSpecificBooking('${dateKey}', '${booking.user}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px; margin: 0;">Törlés</button>` : ''}
