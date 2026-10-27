@@ -33,6 +33,26 @@ main {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }
 
+.back-link-container {
+    margin-bottom: 20px;
+}
+
+.back-btn {
+    display: inline-block;
+    background-color: #3498db;
+    color: white;
+    padding: 8px 16px;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.back-btn:hover {
+    background-color: #2980b9;
+}
+
 h1 {
     font-size: clamp(1.5rem, 3vw, 2.2rem);
     line-height: 1.25;
@@ -105,7 +125,6 @@ li {
     margin: 0.4em 0;
 }
 
-/* Egységes középre igazított képdoboz */
 .image-container {
     display: block;
     margin: 16px auto;
@@ -122,7 +141,6 @@ li {
     align-items: flex-start;
 }
 
-/* Kép alapelemek */
 .doksi-kep {
     display: block;
     width: 100%;
@@ -147,25 +165,6 @@ li {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-/* Forgatás gomb stílusa */
-.rotate-btn {
-    display: block;
-    margin: 6px auto 0 auto;
-    background: #e2e8e4;
-    border: none;
-    padding: 4px 10px;
-    font-size: 0.8rem;
-    color: var(--primary);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-
-.rotate-btn:hover {
-    background: var(--accent);
-}
-
-/* Lightbox (Nagyító nézet felugró ablak) */
 .lightbox-modal {
     display: none;
     position: fixed;
@@ -208,23 +207,11 @@ li {
 }
 </style>
 <script>
-function rotateImage(button) {
-    const container = button.parentElement;
-    const img = container.querySelector('.doksi-kep');
-    let currentRotation = parseInt(img.getAttribute('data-rotation') || 0);
-    currentRotation = (currentRotation + 90) % 360;
-    
-    img.style.transform = `rotate(${currentRotation}deg)`;
-    img.setAttribute('data-rotation', currentRotation);
-}
-
 function openLightbox(imgElement) {
     const modal = document.getElementById('lightboxModal');
     const modalImg = document.getElementById('lightboxImg');
     modal.style.display = 'flex';
     modalImg.src = imgElement.src;
-    const currentRotation = imgElement.getAttribute('data-rotation') || 0;
-    modalImg.style.transform = `rotate(${currentRotation}deg)`;
 }
 
 function closeLightbox() {
@@ -234,6 +221,10 @@ function closeLightbox() {
 </head>
 <body>
 <main>
+    <div class="back-link-container">
+        <a href="index.html" class="back-btn">⬅️ Vissza a Foglalási Rendszerbe</a>
+    </div>
+
     <h1>Nyaraló Használati, Kulcs- és Zárási Útmutató</h1>
 
     <div class="info-box">
@@ -277,7 +268,6 @@ function closeLightbox() {
     <div class="image-gallery">
         <div class="image-container">
             <img class="doksi-kep" src="kepek/nyaralo_kep_01.png" alt="4 kulcsos csomó" loading="lazy" onclick="openLightbox(this)">
-          
         </div>
     </div>
     
@@ -287,7 +277,6 @@ function closeLightbox() {
             <strong>Mosókonyha kulcs:</strong> A különleges fejéről könnyen megismerhető. 
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_03.jpeg" alt="Mosókonyha kulcs" loading="lazy" onclick="openLightbox(this)">
-                
             </div>
         </li>
         <li>
@@ -295,11 +284,9 @@ function closeLightbox() {
             <div class="image-gallery">
                 <div class="image-container">
                     <img class="doksi-kep" src="kepek/nyaralo_kep_04.jpeg" alt="Szerszámos felső zár" loading="lazy" onclick="openLightbox(this)">
-                    <
                 </div>
                 <div class="image-container">
                     <img class="doksi-kep" src="kepek/nyaralo_kep_05.jpeg" alt="Szerszámos kilincs" loading="lazy" onclick="openLightbox(this)">
-                   
                 </div>
             </div>
         </li>
@@ -308,17 +295,14 @@ function closeLightbox() {
             <div class="image-gallery">
                 <div class="image-container">
                     <img class="doksi-kep" src="kepek/nyaralo_kep_06.jpeg" alt="Konyha alsó kulcs" loading="lazy" onclick="openLightbox(this)">
-                    
                 </div>
                 <div class="image-container">
                     <img class="doksi-kep" src="kepek/nyaralo_kep_07.jpeg" alt="Konyha ajtó zárás" loading="lazy" onclick="openLightbox(this)">
-                   
                 </div>
             </div>
         </li>
         <li><strong>Szerszámos alsó kulcs:</strong> Hosszú szárú kulcs (a zár nehézkessége miatt nem használjuk).</li>
     </ul>
-    <p><em>Tipp az azonosításhoz:</em> Az egyforma kulcsokat érdemes kipróbálni / próbálgatni a helyszínen, nincs sok lehetőség.</p>
 
     <h3>Helyiségenkénti nyitási és zárási lépések</h3>
     <ul>
@@ -326,13 +310,11 @@ function closeLightbox() {
         <li><strong>Konyha:</strong> A konyha alsó kulccsal nyitható/zárható. Záráskor/nyitáskor finoman rá lehet rúgni / lábbal segíteni az ajtó alsó részére, hogy a nyelv könnyen a helyére ugorjon.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_08.jpeg" alt="Konyha ajtó zárás lábbal" loading="lazy" onclick="openLightbox(this)">
-                
             </div>
         </li>
         <li><strong>Mosókonyha:</strong> A különleges fejéről felismerhető kulccsal működik a cilinderzár.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_09.jpeg" alt="Mosókonyha kulcs használatban" loading="lazy" onclick="openLightbox(this)">
-                
             </div>
         </li>
     </ul>
@@ -342,38 +324,32 @@ function closeLightbox() {
     <p><strong>1. A 6 kulcsos csomó azonosítása és tippek:</strong></p>
     <div class="image-container">
         <img class="doksi-kep" src="kepek/nyaralo_kep_02.png" alt="6 kulcsos csomó" loading="lazy" onclick="openLightbox(this)">
-       
     </div>
     
     <ul>
         <li><strong>Kapu kulcs:</strong> A gömbölyű fejéről könnyen megismerhető hosszú szárú kulcs a kertkapuhoz.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_10.jpeg" alt="Kapu kulcs" loading="lazy" onclick="openLightbox(this)">
-                <
             </div>
         </li>
         <li><strong>Bejárati ajtó felső:</strong> Hosszabb szárú tollas kulcs az ajtó felső zárjához.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_11.jpeg" alt="Bejárati ajtó felső kulcs" loading="lazy" onclick="openLightbox(this)">
-                <b
             </div>
         </li>
         <li><strong>Bejárati ajtó alsó:</strong> Lapos cilinderkulcs az ajtó alsó zárjához.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_12.jpeg" alt="Bejárati ajtó alsó kulcs" loading="lazy" onclick="openLightbox(this)">
-                <bu
             </div>
         </li>
         <li><strong>Terasz ajtó:</strong> Rövidebb lapos cilinderkulcs a terasz felőli ajtóhoz.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_13.jpeg" alt="Terasz ajtó kulcs" loading="lazy" onclick="openLightbox(this)">
-                
             </div>
         </li>
         <li><strong>Spaletta külső felső / alsó:</strong> Kisebb tollas kulcsok a spalettákhoz.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_14.jpeg" alt="Spaletta kulcsok" loading="lazy" onclick="openLightbox(this)">
-               
             </div>
         </li>
     </ul>
@@ -384,7 +360,6 @@ function closeLightbox() {
         <li><strong>Utcafronti spaletták és ablakok:</strong> Ha a spaletták ki vannak nyitva, a szúnyoghálókat kívülről kell rátenni az ablakra, és a spalettákat kívülről egy kampóval kell rögzíteni, hogy ne csukódjanak be.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_15.jpeg" alt="Utcafronti spaletta rögzítés" loading="lazy" onclick="openLightbox(this)">
-               
             </div>
         </li>
         <li><strong>Kert felőli oldal (Teraszajtó és nagy spaletták):</strong>
@@ -394,19 +369,16 @@ function closeLightbox() {
             </ul>
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_16.jpeg" alt="Nagy spaletták" loading="lazy" onclick="openLightbox(this)">
-                
             </div>
         </li>
         <li><strong>Zsanérok tehermentesítése:</strong> Ha a spaletta ki van nyitva, a szaka alá téglákat kell tenni, hogy ne lógjon, így védve a zsanérokat a terheléstől.
             <div class="image-container">
                 <img class="doksi-kep" src="kepek/nyaralo_kep_17.jpeg" alt="Zsanér tehermentesítés téglával" loading="lazy" onclick="openLightbox(this)">
-              
             </div>
         </li>
         <li>Az utcafronton minden spalettát be kell csukni.
             <div class="image-container">
                 <img class="doksi-kep landscape" src="kepek/nyaralo_kep_18.jpeg" alt="Utcafronti spaletták bezárva" loading="lazy" onclick="openLightbox(this)">
-                <
             </div>
         </li>
     </ul>
@@ -416,7 +388,6 @@ function closeLightbox() {
     </div>
 </main>
 
-<!-- Lightbox felugró ablak konténer -->
 <div id="lightboxModal" class="lightbox-modal" onclick="closeLightbox()">
     <img id="lightboxImg" src="" alt="Nagyított kép">
 </div>
