@@ -78,6 +78,7 @@
             font-weight: bold;
             border: none;
             cursor: pointer;
+            display: inline-block;
         }
         .info-btn:hover {
             background-color: #138d75;
@@ -214,7 +215,6 @@
             border: 1px solid #ccc;
         }
 
-        /* NYARALÓ KIS KÉP STÍLUS */
         .house-img-container {
             text-align: center;
             margin-bottom: 15px;
@@ -274,7 +274,7 @@
                 <li><strong>1. Napok kijelölése:</strong> Kattints rá egy vagy több szabad napra (akár több hónapon át is), amelyek ekkor kék színűre váltanak.</li>
                 <li><strong>2. Művelet kiválasztása:</strong> Alul válaszd ki a legördülőből, hogy mit szeretnél, és írhatsz hozzá megjegyzést is (pl. csapat neve, létszám).</li>
                 <li><strong>3. Mentés:</strong> Kattints a zöld gombra, mire a foglalás aktiválódik a naptárban!</li>
-                <li><strong>4. Nagyobb csapatok, barátok:</strong> Ha csapattal, osztálytársakkal érkeztek, a foglaláskor a megjegyzés mezőbe beírhatjátok a csoport nevét.</li>
+                <li><strong>4. Kulcsok és Zárás:</strong> A részletes kulcs- és zárási útmutatót bármikor eléred a főoldalon a <em>📖 Kulcsok és Használat</em> gombra kattintva.</li>
                 <li><strong>5. Új felhasználók:</strong> Az adminisztrátorok (**Liviusz, Timi**) a felületen keresztül bármikor felvehetnek új tagokat.</li>
             </ul>
             
@@ -304,6 +304,9 @@
                 <input type="password" id="password" placeholder="Jelszó">
             </div>
             <button onclick="handleLogin()">Belépés</button>
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="hasznalat.html" target="_blank" class="info-btn" style="background-color: #2c3e50;">📖 Kulcsok és Használati Útmutató</a>
+            </div>
             <p id="login-error" style="color: red; text-align: center; margin-top: 10px;"></p>
         </div>
 
@@ -315,7 +318,8 @@
 
             <div class="user-info">
                 <div>Bejelentkezve mint: <strong id="current-user-display"></strong> (<span id="user-role-display"></span>)</div>
-                <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <a href="hasznalat.html" target="_blank" class="info-btn" style="background-color: #2c3e50;">📖 Használat & Kulcsok</a>
                     <button onclick="openHelpModal()" class="info-btn" style="margin: 0; width: auto;">ℹ️ Útmutató</button>
                     <button onclick="handleLogout()" style="width: auto; margin: 0; background-color: #7f8c8d;">Kilépés</button>
                 </div>
