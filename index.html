@@ -164,7 +164,6 @@
             color: white !important;
         }
         
-        /* TOOLTIP / EGÉRMUTATÓ RÁVITELÉRE MEGJELENŐ DOBOZ */
         .day-card .tooltip-text {
             visibility: hidden;
             width: 150px;
@@ -215,7 +214,6 @@
             border: 1px solid #ccc;
         }
 
-        /* MODAL / FELUGRÓ ABLAK STÍLUS */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -255,7 +253,6 @@
 </head>
 <body>
 
-    <!-- HASZNÁLATI ÚTMUTATÓ FELUGRÓ ABLAK -->
     <div id="help-modal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3>Üdvözlünk a Nyaraló Foglalási Rendszerben! 🏡</h3>
@@ -277,7 +274,6 @@
     </div>
 
     <div class="container">
-        <!-- BEJELENTKEZÉSI NÉZET -->
         <div id="login-section">
             <h1>Nyaraló Bejelentkezés (2027)</h1>
             <p style="text-align: center; color: #666;">Kérlek, add meg a hozzáférési adataidat!</p>
@@ -293,7 +289,6 @@
             <p id="login-error" style="color: red; text-align: center; margin-top: 10px;"></p>
         </div>
 
-        <!-- FŐ ALKALMAZÁS NÉZET -->
         <div id="app-section" class="hidden">
             <div class="user-info">
                 <div>Bejelentkezve mint: <strong id="current-user-display"></strong> (<span id="user-role-display"></span>)</div>
@@ -331,7 +326,6 @@
                 <span style="background: #fcf3cf; padding: 3px 8px; border: 1px solid #f1c40f; border-radius: 4px;">Nyitott (Megosztott)</span>
             </div>
 
-            <!-- Hét napjai fejléc -->
             <div class="calendar-grid">
                 <div class="weekday-header">Hét</div>
                 <div class="weekday-header">Kedd</div>
@@ -343,7 +337,6 @@
             </div>
             <div id="calendar-container" class="calendar-grid" style="margin-top: 5px;"></div>
 
-            <!-- Kijelölést kezelő sáv -->
             <div id="booking-action-panel" style="margin-top: 20px; background: #f8f9f9; padding: 15px; border-radius: 5px; border: 1px dashed #3498db;" class="hidden">
                 <h3 style="margin-top: 0; font-size: 15px;">Kijelölt napok műveletei</h3>
                 <div class="form-group">
@@ -358,7 +351,6 @@
                 <button onclick="clearSelection()" style="background-color: #7f8c8d;">Kijelölés törlése</button>
             </div>
 
-            <!-- ADMIN FELÜLET: FELHASZNÁLÓK KEZELÉSE -->
             <div id="admin-user-section" class="admin-section hidden">
                 <h3>Admin: Felhasználók kezelése</h3>
                 <div class="form-group">
@@ -422,7 +414,7 @@
                     }
                 }
             } catch (e) {
-                console.log('Hálózati hiba adatok betöltése közben.');
+                console.log('Hálózati hiba adatok betöltése közben, helyi adatok használata.');
             }
         }
 
@@ -447,10 +439,14 @@
         }
 
         async function handleLogin() {
+            const err = document.getElementById('login-error');
+            err.innerText = "Bejelentkezés folyamatban...";
+            
+            // Megpróbáljuk betölteni a legfrissebb adatokat a felhőből, de ha hiba van, akkor sem fagyunk le
             await loadDataFromCloud();
+
             const u = document.getElementById('username').value.trim();
             const p = document.getElementById('password').value;
-            const err = document.getElementById('login-error');
 
             if (dbData.users[u] && dbData.users[u].pass === p) {
                 currentUser = u;
