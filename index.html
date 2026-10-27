@@ -68,6 +68,20 @@
         .success-btn:hover {
             background-color: #219653;
         }
+        .info-btn {
+            background-color: #16a085;
+            color: white;
+            padding: 6px 12px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+        }
+        .info-btn:hover {
+            background-color: #138d75;
+        }
         .gcal-btn {
             background-color: #f39c12;
             color: white;
@@ -93,6 +107,8 @@
             padding: 10px 15px;
             border-radius: 5px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
         .calendar-grid {
             display: grid;
@@ -151,7 +167,7 @@
         /* TOOLTIP / EGÉRMUTATÓ RÁVITELÉRE MEGJELENŐ DOBOZ */
         .day-card .tooltip-text {
             visibility: hidden;
-            width: 140px;
+            width: 150px;
             background-color: #2c3e50;
             color: #fff;
             text-align: center;
@@ -216,9 +232,11 @@
             background: white;
             padding: 25px;
             border-radius: 8px;
-            max-width: 500px;
+            max-width: 520px;
             width: 90%;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .modal-content h3 {
             margin-top: 0;
@@ -227,7 +245,7 @@
         .modal-content ul {
             padding-left: 20px;
             color: #34495e;
-            font-size: 14px;
+            font-size: 13px;
             line-height: 1.6;
         }
         .modal-content li {
@@ -245,8 +263,15 @@
                 <li><strong>1. Napok kijelölése:</strong> Kattints rá egy vagy több szabad napra (akár több hónapon át is), amelyek ekkor kék színűre váltanak.</li>
                 <li><strong>2. Művelet kiválasztása:</strong> Alul válaszd ki a legördülőből, hogy mit szeretnél (Zárt foglalás csak neked, Nyitott foglalás, ahová más is jöhet, vagy a kijelöltek törlése).</li>
                 <li><strong>3. Mentés:</strong> Kattints a zöld gombra, mire a foglalás aktiválódik a naptárban!</li>
-                <li><strong>4. Részletek & Tooltip:</strong> Ha az egeret ráviszed egy napra, azonnal látod, ki foglalta le. Az alsó listában pedig az avatarok is megjelennek!</li>
+                <li><strong>4. Nagyobb csapatok, barátok:</strong> Ha 5–10 fős csapattal, osztálytársakkal érkeztek, a csapatvezető foglalja le a napokat <em>„Nyitott (Mások is jöhetnek)”</em> opcióval, így mindenki látni fogja.</li>
+                <li><strong>5. Új felhasználók:</strong> Az adminisztrátorok (**Liviusz, Timi**) a felületen keresztül bármikor felvehetnek új családtagokat vagy tagokat.</li>
             </ul>
+            
+            <div style="margin-top: 15px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555;">
+                <input type="checkbox" id="dont-show-again" style="width: auto; margin: 0; cursor: pointer;">
+                <label for="dont-show-again" style="margin: 0; font-weight: normal; cursor: pointer;">Ne mutassa ezt újra bejelentkezéskor</label>
+            </div>
+
             <button onclick="closeHelpModal()" class="success-btn" style="margin-top: 15px;">Megértettem, tovább a naptárhoz</button>
         </div>
     </div>
@@ -272,7 +297,10 @@
         <div id="app-section" class="hidden">
             <div class="user-info">
                 <div>Bejelentkezve mint: <strong id="current-user-display"></strong> (<span id="user-role-display"></span>)</div>
-                <button onclick="handleLogout()" style="width: auto; margin: 0; background-color: #7f8c8d;">Kilépés</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button onclick="openHelpModal()" class="info-btn" style="margin: 0; width: auto;">ℹ️ Útmutató</button>
+                    <button onclick="handleLogout()" style="width: auto; margin: 0; background-color: #7f8c8d;">Kilépés</button>
+                </div>
             </div>
 
             <h2>Nyaraló Foglalási Rendszer</h2>
@@ -443,13 +471,24 @@
                 renderCalendar();
                 renderMyBookings();
 
-                document.getElementById('help-modal').classList.remove('hidden');
+                const hideHelp = localStorage.getItem('nyaralo_hide_help');
+                if (!hideHelp) {
+                    document.getElementById('help-modal').classList.remove('hidden');
+                }
             } else {
                 err.innerText = "Hibás felhasználónév vagy jelszó!";
             }
         }
 
+        function openHelpModal() {
+            document.getElementById('help-modal').classList.remove('hidden');
+        }
+
         function closeHelpModal() {
+            const dontShow = document.getElementById('dont-show-again').checked;
+            if (dontShow) {
+                localStorage.setItem('nyaralo_hide_help', 'true');
+            }
             document.getElementById('help-modal').classList.add('hidden');
         }
 
@@ -501,230 +540,4 @@
 
         function renderUserList() {
             const container = document.getElementById('user-list-container');
-            container.innerHTML = '<strong>Létező felhasználók (Felhő):</strong>';
-
-            for (const [uname, data] of Object.entries(dbData.users)) {
-                const div = document.createElement('div');
-                div.className = 'user-item';
-                div.innerHTML = `
-                    <span>${uname} (${data.role})</span>
-                    ${uname !== 'admin' ? `<button onclick="deleteUser('${uname}')" class="danger-btn" style="padding: 3px 8px; font-size: 11px;">Törlés</button>` : ''}
-                `;
-                container.appendChild(div);
-            }
-        }
-
-        function getDaysInMonth(year, month) {
-            return new Date(year, month + 1, 0).getDate();
-        }
-
-        // Segédfüggvény avatar HTML generálásához (ha van kép, betölti, ha nincs, elhagyja)
-        function getAvatarHtml(username) {
-            return `<img src="avatarok/${username}.jpg" class="avatar" onerror="this.style.display='none'">`;
-        }
-
-        async function renderCalendar() {
-            await loadDataFromCloud();
-            const selectedVal = document.getElementById('month-select').value;
-            const [yearStr, monthStr] = selectedVal.split('-');
-            const year = parseInt(yearStr);
-            const month = parseInt(monthStr) - 1;
-
-            const container = document.getElementById('calendar-container');
-            container.innerHTML = '';
-
-            const daysCount = getDaysInMonth(year, month);
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const startingSpace = (firstDayIndex === 0) ? 6 : firstDayIndex - 1;
-
-            for (let i = 0; i < startingSpace; i++) {
-                const emptyCard = document.createElement('div');
-                emptyCard.className = 'day-card empty';
-                container.appendChild(emptyCard);
-            }
-
-            for (let day = 1; day <= daysCount; day++) {
-                const dayDate = new Date(year, month, day);
-                const dayStr = String(day).padStart(2, '0');
-                const mStr = String(month + 1).padStart(2, '0');
-                const dateKey = `${year}-${mStr}-${dayStr}`;
-
-                const weekdays = ['Vas', 'Hét', 'Ked', 'Sze', 'Csü', 'Pén', 'Szo'];
-                const weekdayName = weekdays[dayDate.getDay()];
-
-                const card = document.createElement('div');
-                card.className = 'day-card';
-
-                const bookingsList = dbData.bookings[dateKey];
-                
-                if (selectedDates.includes(dateKey)) {
-                    card.classList.add('selected');
-                    card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>✓ Kijelölve</small>`;
-                } else if (bookingsList && bookingsList.length > 0) {
-                    const hasAlone = bookingsList.some(b => b.type === 'alone');
-                    
-                    // Tooltip összeállítása a nevekkel és típusokkal
-                    const tooltipDetails = bookingsList.map(b => `${b.user} (${b.type === 'alone' ? 'Zárt' : 'Nyitott'})`).join(', ');
-
-                    if (hasAlone) {
-                        card.classList.add('booked-alone');
-                        const usersStr = bookingsList.map(b => b.user).join(', ');
-                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>🔒 ${usersStr}</small><span class="tooltip-text">${tooltipDetails}</span>`;
-                    } else {
-                        card.classList.add('booked-shared');
-                        card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small>👥 Nyitott (${bookingsList.length} fő)</small><span class="tooltip-text">${tooltipDetails}</span>`;
-                    }
-                } else {
-                    card.classList.add('free');
-                    card.innerHTML = `<strong>${day}. (${weekdayName})</strong><small style="color: green;">Szabad</small>`;
-                }
-
-                card.onclick = () => toggleDateSelection(dateKey);
-                container.appendChild(card);
-            }
-            updateActionPanel();
-            renderMyBookings();
-        }
-
-        function toggleDateSelection(dateKey) {
-            const bookingsList = dbData.bookings[dateKey];
-            if (bookingsList && bookingsList.length > 0) {
-                const hasAlone = bookingsList.some(b => b.type === 'alone');
-                const isMyBooking = bookingsList.some(b => b.user === currentUser);
-                if (hasAlone && !isMyBooking && currentRole !== 'Admin') {
-                    alert('Ez a nap más által lezárt egyedüli foglalás!');
-                    return;
-                }
-            }
-
-            const index = selectedDates.indexOf(dateKey);
-            if (index > -1) {
-                selectedDates.splice(index, 1);
-            } else {
-                selectedDates.push(dateKey);
-            }
-            renderCalendar();
-        }
-
-        function clearSelection() {
-            selectedDates = [];
-            renderCalendar();
-        }
-
-        function updateActionPanel() {
-            const panel = document.getElementById('booking-action-panel');
-            if (selectedDates.length > 0) {
-                panel.classList.remove('hidden');
-            } else {
-                panel.classList.add('hidden');
-            }
-        }
-
-        async function executeSelectedAction() {
-            if (selectedDates.length === 0) return;
-            const actionType = document.getElementById('booking-type').value;
-
-            if (actionType === 'delete') {
-                if (confirm(`Biztosan törölni szeretnéd a saját foglalásaidat a kijelölt ${selectedDates.length} db napról?`)) {
-                    for (const dateKey of selectedDates) {
-                        if (dbData.bookings[dateKey]) {
-                            dbData.bookings[dateKey] = dbData.bookings[dateKey].filter(b => b.user !== currentUser);
-                            if (dbData.bookings[dateKey].length === 0) {
-                                delete dbData.bookings[dateKey];
-                            }
-                        }
-                    }
-                    await saveDataToCloud();
-                    selectedDates = [];
-                    renderCalendar();
-                    alert('A kijelölt foglalásaid törölve lettek!');
-                }
-            } else {
-                for (const dateKey of selectedDates) {
-                    if (!dbData.bookings[dateKey]) {
-                        dbData.bookings[dateKey] = [];
-                    }
-
-                    const existingIndex = dbData.bookings[dateKey].findIndex(b => b.user === currentUser);
-                    const hasOther = dbData.bookings[dateKey].some(b => b.user !== currentUser);
-                    
-                    if (actionType === 'alone' && hasOther) {
-                        alert(`A(z) ${dateKey} napra már más is jelentkezett, így azt nem tudod egyedüli (zárt) foglalássá tenni!`);
-                        continue;
-                    }
-
-                    if (existingIndex > -1) {
-                        dbData.bookings[dateKey][existingIndex].type = actionType;
-                    } else {
-                        dbData.bookings[dateKey].push({ user: currentUser, type: actionType });
-                    }
-                }
-                await saveDataToCloud();
-                selectedDates = [];
-                renderCalendar();
-                alert('A kijelölt napok foglalása sikeresen elmentve!');
-            }
-        }
-
-        async function deleteSpecificBooking(dateKey, targetUser) {
-            if (confirm(`Biztosan törölni szeretnéd ${targetUser} foglalását erről a napról (${dateKey})?`)) {
-                if (dbData.bookings[dateKey]) {
-                    dbData.bookings[dateKey] = dbData.bookings[dateKey].filter(b => b.user !== targetUser);
-                    if (dbData.bookings[dateKey].length === 0) {
-                        delete dbData.bookings[dateKey];
-                    }
-                    await saveDataToCloud();
-                    renderCalendar();
-                }
-            }
-        }
-
-        function renderMyBookings() {
-            const container = document.getElementById('my-bookings-container');
-            container.innerHTML = '';
-
-            let hasBookings = false;
-            const sortedDates = Object.keys(dbData.bookings).sort();
-
-            for (const dateKey of sortedDates) {
-                const bookingsList = dbData.bookings[dateKey];
-                if (!Array.isArray(bookingsList)) continue;
-
-                for (const booking of bookingsList) {
-                    hasBookings = true;
-                    const item = document.createElement('div');
-                    item.className = 'booking-item';
-                    
-                    const typeText = booking.type === 'alone' ? '🔒 Csak én / Egyedül' : '👥 Mások is jöhetnek (Nyitott)';
-                    const avatarHtml = getAvatarHtml(booking.user);
-                    
-                    const startDate = dateKey.replace(/-/g, '');
-                    let nextDay = new Date(dateKey);
-                    nextDay.setDate(nextDay.getDate() + 1);
-                    const endDate = nextDay.toISOString().slice(0, 10).replace(/-/g, '');
-                    
-                    const eventTitle = encodeURIComponent(`Nyaraló foglalás - ${booking.user} (${booking.type === 'alone' ? 'Zárt' : 'Nyitott'})`);
-                    const eventDetails = encodeURIComponent(`Foglalás típusa: ${typeText}\nFoglalta: ${booking.user}`);
-                    const eventLocation = encodeURIComponent('Balatoni Nyaraló');
-                    const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${eventTitle}&dates=${startDate}/${endDate}&details=${eventDetails}&location=${eventLocation}`;
-
-                    const canDelete = (booking.user === currentUser || currentRole === 'Admin');
-
-                    item.innerHTML = `
-                        <span><strong>${dateKey}</strong> - ${avatarHtml}<strong>${booking.user}</strong> (${typeText})</span>
-                        <div style="display: flex; gap: 5px; align-items: center;">
-                            <a href="${gCalUrl}" target="_blank" class="gcal-btn">📅 Google Naptár</a>
-                            ${canDelete ? `<button onclick="deleteSpecificBooking('${dateKey}', '${booking.user}')" class="danger-btn" style="padding: 5px 10px; font-size: 12px; margin: 0;">Törlés</button>` : ''}
-                        </div>
-                    `;
-                    container.appendChild(item);
-                }
-            }
-
-            if (!hasBookings) {
-                container.innerHTML = '<p style="color: #888; font-size: 13px;">Nincsenek megjeleníthető foglalások a rendszerben.</p>';
-            }
-        }
-    </script>
-</body>
-</html>
+            container.innerHTML =
